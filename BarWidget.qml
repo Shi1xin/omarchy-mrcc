@@ -60,13 +60,16 @@ BarWidget {
     bar: root.bar
     text: root.connected ? "󰈐" : "󰠝"
     slotSize: Style.bar.statusSlot
-    tooltipText: root.connected ? "Liquid cooler connected" : "Liquid cooler disconnected"
+    tooltipText: root.connected
+      ? "Connected · right-click disconnects"
+      : "Disconnected · right-click connects"
     opacity: root.connected ? 1 : 0.45
 
     onPressed: function(b) {
       if (!root.bar) return
       if (b === Qt.RightButton) {
-        if (panelLoader.item && panelLoader.item.disconnectCooler) panelLoader.item.disconnectCooler()
+        if (panelLoader.item && panelLoader.item.toggleConnection)
+          panelLoader.item.toggleConnection()
       } else {
         root.togglePanel()
       }

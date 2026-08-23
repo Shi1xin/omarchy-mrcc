@@ -13,6 +13,8 @@ omarchy plugin add https://github.com/Shi1xin/omarchy-mrcc.git --enable
 
 `dbus`, `bluez`, and `bluez-utils` must already be installed. Put `~/.cargo/bin` on `PATH`.
 
+Left-click the bar icon to open the panel. Right-click connects when disconnected, and disconnects when connected.
+
 ## License
 
 MIT.

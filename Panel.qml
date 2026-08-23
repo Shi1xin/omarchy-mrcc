@@ -87,6 +87,12 @@ Panel {
     actionProc.running = true
   }
 
+  function toggleConnection() {
+    if (locked) return
+    if (connected) disconnectCooler()
+    else connectCooler()
+  }
+
   function applyProfile(id) {
     if (!connected || locked) return
     runMrcc("strategy " + id)
@@ -199,127 +205,139 @@ Panel {
     onExited: function(code) { root.sessionHookInstalled = code === 0 }
   }
 
-  PanelKeyCatcher {
-    anchors.fill: parent
-    onCloseRequested: root.close()
-    onTabRequested: function(direction) { root.switchPanel(direction) }
+  KeyboardPanel {
+    id: panel
+    anchorItem: root.anchorItem
+    owner: root.barIdentity
+    bar: root.bar
+    open: root.opened
+    focusTarget: keyCatcher
+    contentWidth: panel.fittedContentWidth(Style.space(380))
+    contentHeight: panel.fittedContentHeight(column.implicitHeight)
 
-    Flickable {
+    PanelKeyCatcher {
+      id: keyCatcher
       anchors.fill: parent
-      contentWidth: width
-      contentHeight: column.implicitHeight
-      clip: true
-      boundsBehavior: Flickable.StopAtBounds
-      flickableDirection: Flickable.VerticalFlick
+      onCloseRequested: root.close()
+      onTabRequested: function(direction) { root.switchPanel(direction) }
 
-      Column {
-        id: column
-        width: parent.width
-        spacing: Style.space(12)
-
-        PanelHero {
-          width: parent.width
-          title: "Liquid Cooler"
-          meta: !root.mrccFound ? "mrcc not installed" : (root.connected ? "Connected" : "Disconnected")
-          detail: {
-            if (!root.mrccFound) return "cargo install --git https://github.com/Shi1xin/mrcc.git --locked"
-            if (root.deviceName || root.addr) return [root.deviceName, root.addr].filter(function(s) { return s }).join(" · ")
-            return "Scan and connect from here"
-          }
-          foreground: root.foreground
-          fontFamily: root.fontFamily
-          iconOpacity: root.connected ? 1 : 0.45
-          iconComponent: Component {
-            Text {
-              text: root.connected ? "󰈐" : "󰠝"
-              color: root.foreground
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.display
-            }
-          }
-          trailingControl: Component {
-            ToggleSwitch {
-              visible: root.mrccFound
-              checked: root.connected
-              busy: root.locked
-              foreground: root.foreground
-              onToggled: {
-                if (root.connected) root.disconnectCooler()
-                else root.connectCooler()
-              }
-            }
-          }
-        }
-
-        Text {
-          visible: root.lastError !== ""
-          width: parent.width
-          text: root.lastError
-          color: bar && bar.urgent ? bar.urgent : Color.urgent
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.bodySmall
-          wrapMode: Text.WordWrap
-        }
-
-        PanelSeparator { visible: root.mrccFound; foreground: root.foreground }
+      Flickable {
+        anchors.fill: parent
+        contentWidth: width
+        contentHeight: column.implicitHeight
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        flickableDirection: Flickable.VerticalFlick
 
         Column {
-          visible: root.mrccFound
+          id: column
           width: parent.width
-          spacing: Style.space(8)
-          enabled: root.connected && !root.locked
-          opacity: enabled ? 1 : 0.4
+          spacing: Style.space(12)
 
-          PanelSectionHeader {
-            text: "STRATEGY"
+          PanelHero {
+            width: parent.width
+            title: "Liquid Cooler"
+            meta: !root.mrccFound ? "mrcc not installed" : (root.connected ? "Connected" : "Disconnected")
+            detail: {
+              if (!root.mrccFound) return "cargo install --git https://github.com/Shi1xin/mrcc.git --locked"
+              if (root.deviceName || root.addr) return [root.deviceName, root.addr].filter(function(s) { return s }).join(" · ")
+              return "Scan and connect from here"
+            }
             foreground: root.foreground
             fontFamily: root.fontFamily
-          }
-
-          Flow {
-            width: parent.width
-            spacing: Style.space(6)
-            Repeater {
-              model: root.profileIds
-              Button {
-                text: Model.strategyLabel(modelData)
-                selected: root.strategy === modelData
-                enabled: root.connected && !root.locked
+            iconOpacity: root.connected ? 1 : 0.45
+            iconComponent: Component {
+              Text {
+                text: root.connected ? "󰈐" : "󰠝"
+                color: root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.display
+              }
+            }
+            trailingControl: Component {
+              ToggleSwitch {
+                visible: root.mrccFound
+                checked: root.connected
+                busy: root.locked
                 foreground: root.foreground
-                fontFamily: root.fontFamily
-                onClicked: root.applyProfile(modelData)
+                onToggled: {
+                  if (root.connected) root.disconnectCooler()
+                  else root.connectCooler()
+                }
               }
             }
           }
-        }
 
-        PanelSeparator { visible: root.mrccFound; foreground: root.foreground }
-
-        Column {
-          visible: root.mrccFound
-          width: parent.width
-          spacing: Style.space(8)
-
-          Button {
+          Text {
+            visible: root.lastError !== ""
             width: parent.width
-            text: root.filling ? root.fillText : "Fill water"
-            enabled: root.connected && !root.busy && !root.filling
-            foreground: root.foreground
-            fontFamily: root.fontFamily
-            onClicked: root.startFill()
+            text: root.lastError
+            color: bar && bar.urgent ? bar.urgent : Color.urgent
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+            wrapMode: Text.WordWrap
           }
 
-          Rectangle {
-            visible: root.filling || root.fillFraction > 0
+          PanelSeparator { visible: root.mrccFound; foreground: root.foreground }
+
+          Column {
+            visible: root.mrccFound
             width: parent.width
-            height: Style.space(6)
-            radius: height / 2
-            color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.15)
+            spacing: Style.space(8)
+            enabled: root.connected && !root.locked
+            opacity: enabled ? 1 : 0.4
+
+            PanelSectionHeader {
+              text: "STRATEGY"
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+            }
+
+            Flow {
+              width: parent.width
+              spacing: Style.space(6)
+              Repeater {
+                model: root.profileIds
+                Button {
+                  text: Model.strategyLabel(modelData)
+                  selected: root.strategy === modelData
+                  enabled: root.connected && !root.locked
+                  foreground: root.foreground
+                  fontFamily: root.fontFamily
+                  onClicked: root.applyProfile(modelData)
+                }
+              }
+            }
+          }
+
+          PanelSeparator { visible: root.mrccFound; foreground: root.foreground }
+
+          Column {
+            visible: root.mrccFound
+            width: parent.width
+            spacing: Style.space(8)
+
+            Button {
+              width: parent.width
+              text: root.filling ? root.fillText : "Fill water"
+              enabled: root.connected && !root.busy && !root.filling
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+              onClicked: root.startFill()
+            }
+
             Rectangle {
-              height: parent.height
-              width: parent.width * root.fillFraction
-              radius: parent.radius
-              color: root.foreground
+              visible: root.filling || root.fillFraction > 0
+              width: parent.width
+              height: Style.space(6)
+              radius: height / 2
+              color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.15)
+              Rectangle {
+                height: parent.height
+                width: parent.width * root.fillFraction
+                radius: parent.radius
+                color: root.foreground
+              }
             }
           }
         }
