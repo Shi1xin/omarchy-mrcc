@@ -2,13 +2,13 @@
   "schemaVersion": 1,
   "id": "shi1xin.mrcc",
   "name": "Liquid Cooler",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": "Shi1xin",
   "license": "MIT",
   "description": "Bar widget for an LCT22002 external laptop AIO via the mrcc CLI",
   "kinds": ["bar-widget"],
   "entryPoints": {
-    "barWidget": "BarWidget.qml"
+    "barWidget": "Panel.qml"
   },
   "barWidget": {
     "displayName": "Liquid Cooler",

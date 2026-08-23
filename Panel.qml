@@ -10,11 +10,7 @@ Panel {
   id: root
   moduleName: "shi1xin.mrcc"
   ipcTarget: "shi1xin.mrcc"
-
-  property var anchorItem: null
-  property var hostWidget: null
-  readonly property var barIdentity: hostWidget || root
-  property bool openedFromHotkey: false
+  manageIpc: false
 
   property bool mrccFound: false
   property bool connected: false
@@ -34,15 +30,18 @@ Panel {
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
   readonly property bool locked: busy || filling
   readonly property var profileIds: Model.profiles()
+  readonly property string identityName: {
+    if (!mrccFound) return "cargo install --git https://github.com/Shi1xin/mrcc.git --locked"
+    if (deviceName) return deviceName
+    if (addr) return ""
+    return "Scan and connect from here"
+  }
+  readonly property string identityAddr: mrccFound ? addr : ""
+
+  implicitWidth: button.implicitWidth
+  implicitHeight: button.implicitHeight
 
   function open() {
-    openedFromHotkey = false
-    root.controller.show()
-    refresh()
-  }
-
-  function openFromHotkey() {
-    openedFromHotkey = true
     root.controller.show()
     refresh()
   }
@@ -53,13 +52,7 @@ Panel {
 
   function toggle() {
     if (root.opened) root.close()
-    else root.openFromHotkey()
-  }
-
-  function switchPanel(direction) {
-    if (root.bar && typeof root.bar.switchPanelFrom === "function")
-      return root.bar.switchPanelFrom(root.barIdentity, direction)
-    return false
+    else root.open()
   }
 
   function refresh() {
@@ -140,6 +133,21 @@ Panel {
     lastError = ""
   }
 
+  function debugState() {
+    return JSON.stringify({
+      opened: root.opened === true,
+      connected: root.connected,
+      busy: root.busy,
+      filling: root.filling,
+      locked: root.locked,
+      mrccFound: root.mrccFound,
+      lastError: root.lastError,
+      hasBar: root.bar !== null,
+      strategy: root.strategy,
+      addr: root.addr
+    })
+  }
+
   Timer {
     interval: 4000
     repeat: true
@@ -205,10 +213,39 @@ Panel {
     onExited: function(code) { root.sessionHookInstalled = code === 0 }
   }
 
+  IpcHandler {
+    target: "shi1xin.mrcc"
+
+    function open(): void { root.open() }
+    function close(): void { root.close() }
+    function show(): void { root.open() }
+    function hide(): void { root.close() }
+    function toggle(): void { root.toggle() }
+    function toggleConnection(): void { root.toggleConnection() }
+    function debugState(): string { return root.debugState() }
+  }
+
+  BarIconButton {
+    id: button
+    anchors.fill: parent
+    bar: root.bar
+    text: root.connected ? "󰈐" : "󰠝"
+    slotSize: Style.bar.statusSlot
+    tooltipText: root.connected
+      ? "Connected · right-click disconnects"
+      : "Disconnected · right-click connects"
+    opacity: root.connected ? 1 : 0.45
+
+    onPressed: function(b) {
+      if (b === Qt.RightButton) root.toggleConnection()
+      else root.toggle()
+    }
+  }
+
   KeyboardPanel {
     id: panel
-    anchorItem: root.anchorItem
-    owner: root.barIdentity
+    anchorItem: button
+    owner: root
     bar: root.bar
     open: root.opened
     focusTarget: keyCatcher
@@ -238,11 +275,6 @@ Panel {
             width: parent.width
             title: "Liquid Cooler"
             meta: !root.mrccFound ? "mrcc not installed" : (root.connected ? "Connected" : "Disconnected")
-            detail: {
-              if (!root.mrccFound) return "cargo install --git https://github.com/Shi1xin/mrcc.git --locked"
-              if (root.deviceName || root.addr) return [root.deviceName, root.addr].filter(function(s) { return s }).join(" · ")
-              return "Scan and connect from here"
-            }
             foreground: root.foreground
             fontFamily: root.fontFamily
             iconOpacity: root.connected ? 1 : 0.45
@@ -266,6 +298,77 @@ Panel {
                 }
               }
             }
+          }
+
+          Item {
+            visible: root.identityName !== "" || root.identityAddr !== "" || root.mrccFound
+            width: parent.width
+            implicitHeight: Math.max(identityCol.implicitHeight, fillBtn.implicitHeight)
+
+            Column {
+              id: identityCol
+              anchors.left: parent.left
+              anchors.right: fillBtn.visible ? fillBtn.left : parent.right
+              anchors.rightMargin: fillBtn.visible ? Style.space(10) : 0
+              anchors.verticalCenter: parent.verticalCenter
+              spacing: Style.space(2)
+
+              Text {
+                visible: root.identityName !== ""
+                width: parent.width
+                text: root.identityName
+                color: root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.body
+                wrapMode: Text.Wrap
+              }
+
+              Text {
+                visible: root.identityAddr !== ""
+                width: parent.width
+                text: root.identityAddr
+                color: root.dim
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.bodySmall
+                wrapMode: Text.WrapAnywhere
+              }
+            }
+
+            Button {
+              id: fillBtn
+              visible: root.mrccFound
+              anchors.right: parent.right
+              anchors.verticalCenter: parent.verticalCenter
+              text: root.filling ? "Filling…" : "Fill water"
+              enabled: root.connected && !root.busy && !root.filling
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+              onClicked: root.startFill()
+            }
+          }
+
+          Rectangle {
+            visible: root.mrccFound && (root.filling || root.fillFraction > 0)
+            width: parent.width
+            height: Style.space(6)
+            radius: height / 2
+            color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.15)
+            Rectangle {
+              height: parent.height
+              width: parent.width * root.fillFraction
+              radius: parent.radius
+              color: root.foreground
+            }
+          }
+
+          Text {
+            visible: root.filling && root.fillText !== ""
+            width: parent.width
+            text: root.fillText
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            wrapMode: Text.WordWrap
           }
 
           Text {
@@ -306,37 +409,6 @@ Panel {
                   fontFamily: root.fontFamily
                   onClicked: root.applyProfile(modelData)
                 }
-              }
-            }
-          }
-
-          PanelSeparator { visible: root.mrccFound; foreground: root.foreground }
-
-          Column {
-            visible: root.mrccFound
-            width: parent.width
-            spacing: Style.space(8)
-
-            Button {
-              width: parent.width
-              text: root.filling ? root.fillText : "Fill water"
-              enabled: root.connected && !root.busy && !root.filling
-              foreground: root.foreground
-              fontFamily: root.fontFamily
-              onClicked: root.startFill()
-            }
-
-            Rectangle {
-              visible: root.filling || root.fillFraction > 0
-              width: parent.width
-              height: Style.space(6)
-              radius: height / 2
-              color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.15)
-              Rectangle {
-                height: parent.height
-                width: parent.width * root.fillFraction
-                radius: parent.radius
-                color: root.foreground
               }
             }
           }
