@@ -4,6 +4,8 @@
 
 Bar widget for an LCT22002 external laptop AIO. Talks to the [`mrcc`](https://github.com/Shi1xin/mrcc) CLI only.
 
+![Liquid Cooler bar panel](docs/panel.png)
+
 ## Install
 
 ```bash

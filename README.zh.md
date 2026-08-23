@@ -4,6 +4,8 @@
 
 LCT22002 外置水冷的栏插件。只调用 [`mrcc`](https://github.com/Shi1xin/mrcc) CLI。
 
+![水冷栏面板](docs/panel.png)
+
 ## 安装
 
 ```bash
